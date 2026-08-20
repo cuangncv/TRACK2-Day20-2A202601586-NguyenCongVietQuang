@@ -6,9 +6,9 @@
 >
 > `make verify` sẽ fail nếu còn placeholder chưa điền. Đó là cố ý.
 
-**Họ Tên:** _<Họ Tên>_
-**Cohort:** _<A20-K1 / A20-K2 / ...>_
-**Ngày submit:** _<YYYY-MM-DD>_
+**Họ Tên:** Nguyễn Công Việt Quang
+**Cohort:** 2A202601586_A20-K4
+**Ngày submit:** 2026-08-20
 
 ---
 
@@ -16,23 +16,22 @@
 
 > Từ `make probe`. Paste output hoặc điền tay.
 
-- **OS:** _<macOS 14 / Windows 11 / Ubuntu 24.04 / ...>_
-- **CPU:** _<Apple M2 / Intel i7-12700H / AMD Ryzen 7 5800H>_
-- **Cores:** _<physical / logical>_
-- **CPU extensions:** _<AVX2 / AVX-512 / NEON / —>_
-- **RAM:** _<GB>_
-- **Accelerator:** _<NVIDIA RTX 4060 / Apple Metal / Vulkan / CPU only>_
-- **llama.cpp asset đã tải:** _<vd: llama-b10488-bin-macos-arm64.tar.gz>_
-- **Model đã dùng:** _<Gemma 4 E2B / Qwen3.5 0.8B>_ (`LAB_MODEL=`_<gemma4-e2b / qwen35-0.8b>_)
-- **Quantization:** _<primary>_ + _<compare>_ (từ `models/active.json`)
+- **OS:** Ubuntu (WSL2 trên Windows 11), kernel 6.6.87.2-microsoft-standard-WSL2
+- **CPU:** Intel Core i5-1035G1 @ 1.00GHz
+- **Cores:** 4 physical / 8 logical
+- **CPU extensions:** AVX2, AVX-512
+- **RAM:** 5.8 GB
+- **Accelerator:** CPU only (ngl=0). Có NVIDIA GeForce MX330 2GB nhưng base track không dùng GPU offload
+- **llama.cpp asset đã tải:** prebuilt release build b10488, Linux x86_64
+- **Model đã dùng:** Qwen3.5 0.8B (`LAB_MODEL=qwen35-0.8b`)
+- **Quantization:** Q4_K_M (primary) + UD-Q2_K_XL (compare) (từ `models/active.json`)
 
-**Chạy ở đâu:** _<laptop của tôi / Colab / Kaggle>_
-_(Nếu dùng cloud fallback: nói rõ vì sao — RAM < 8 GB, setup fail, v.v. Không mất điểm.)_
+**Chạy ở đâu:** laptop của tôi (WSL2 trên Windows)
 
-**Setup story** (≤ 80 chữ): điều gì cần thay đổi để lab chạy trên máy bạn? Có bước
-nào fail rồi phải workaround không?
-
-_Answer here._
+**Setup story** (≤ 80 chữ): Máy vật lý có 8GB RAM nhưng WSL2 chỉ cấp 3.7GB mặc định.
+File `.wslconfig` đã có `memory=6.5GB` nhưng WSL không parse được số thập phân nên bỏ
+qua, rơi về mặc định 50% RAM host. Sửa thành `memory=6GB` (số nguyên) rồi `wsl --shutdown`
+lại thì lên đúng 5.8GB, đủ ngưỡng chạy Qwen3.5 0.8B local, không cần chuyển sang cloud.
 
 ---
 
@@ -42,14 +41,13 @@ _Answer here._
 
 | Quantization | Size (GB) | Load (ms) | TTFT P50/P95 (ms) | TPOT P50/P95 (ms) | E2E P50/P95/P99 (ms) | Decode (tok/s) |
 |---|--:|--:|--:|--:|--:|--:|
-| UD-Q4_K_XL | | | | | | |
-| UD-Q2_K_XL | | | | | | |
+| Q4_K_M | 0.50 | 2106 | 284 / 364 | 34.7 / 41.2 | 2455 / 2962 / 2962 | 28.8 |
+| UD-Q2_K_XL | 0.39 | 2040 | 614 / 1503 | 48.5 / 66.8 | 3693 / 4706 / 4706 | 20.6 |
 
-**Quan sát** (≤ 60 chữ): 2-bit nhanh hơn bao nhiêu, và **có đáng không**? Bạn đã thử
-hỏi cùng một câu trên cả hai (`make serve` vs `.venv/bin/python labs/02-serve/serve.py --compare`)
-chưa? Chất lượng khác nhau thế nào?
-
-_Answer here._
+**Quan sát** (≤ 60 chữ): quant nhỏ hơn (Q2) chậm hơn quant lớn (Q4) 1.40 lần dù nhẹ
+hơn 0.11GB, vì máy này chỉ 4 core vật lý, không GPU offload, nên bị giới hạn bởi
+compute chứ không phải memory bandwidth — phần dequantize thêm của Q2 tốn hơn phần
+bytes tiết kiệm được. Trên máy này, dùng Q4_K_M hợp lý hơn.
 
 ---
 
@@ -59,22 +57,23 @@ _Answer here._
 
 | Users | RPS | P50 (ms) | P95 (ms) | P99 (ms) | Eff. concurrency | Failures |
 |--:|--:|--:|--:|--:|--:|--:|
-| 10 | | | | | | |
-| 50 | | | | | | |
+| 10 | 0.53 | 16000 | 22000 | 23000 | 8.3 | 0.0% |
+| 50 | 0.54 | 20000 | 56000 | 57000 | 15.0 | 0.0% |
 
-- **Offered load tăng 5×, throughput thực tăng:** _<X.XX>×_
-- **P95 tăng:** _<X.XX>×_
-- **Effective concurrency ở 50 users:** _<số>_ so với `--parallel` = _<số>_ slots
+- **Offered load tăng 5×, throughput thực tăng:** 1.01×
+- **P95 tăng:** 2.55×
+- **Effective concurrency ở 50 users:** 15.0 so với `--parallel` = 4 slots
 
 **Peak `llamacpp:n_busy_slots_per_decode`** (từ `make metrics` khi `make load-50` đang
-chạy): _<số>_ / _<slots>_ slots
+chạy): 3.80 / 4 slots
 
-**Saturation reading** (≤ 80 chữ): server của bạn bão hoà ở đâu, và **bằng chứng nào**
-thuyết phục bạn? Nếu P95 tăng nhanh hơn RPS thì phần latency thêm đó là queue time hay
-compute time — bạn biết bằng cách nào? Nếu bạn phải nâng goodput@SLO, bạn sẽ đổi knob
-nào **trước**, và vì sao knob đó?
-
-_Answer here._
+**Saturation reading** (≤ 80 chữ): server bão hoà ở khoảng 10 user trở xuống, không
+phải 50. Bằng chứng: throughput gần như không đổi (0.53 → 0.54 RPS) dù offered load
+tăng 5 lần, trong khi P95 tăng 2.55 lần và effective concurrency (15.0) vượt xa 4 slot.
+`make metrics` đo peak busy slots 3.80/4 — server luôn bận gần kịch trần. Phần latency
+tăng thêm là queue time, không phải compute time, vì TPOT mỗi token không đổi. Muốn
+nâng goodput@SLO, việc đầu tiên nên đổi là tăng `--parallel` (số slot), vì bottleneck
+nằm ở số request xử lý đồng thời chứ không phải tốc độ decode từng token.
 
 ---
 
@@ -84,23 +83,23 @@ _Answer here._
 
 | Day | Piece | Real hay stub? |
 |---|---|---|
-| N16 Cloud/IaC | | |
-| N17 Data pipeline | | |
-| N18 Lakehouse | | |
-| N19 Vector + features | | |
+| N16 Cloud/IaC | không dùng trong pipeline này | stub |
+| N17 Data pipeline | không dùng trong pipeline này | stub |
+| N18 Lakehouse | không dùng trong pipeline này | stub |
+| N19 Vector + features | keyword overlap fallback, không phải embedding + vector search thật | stub |
 | N20 Serving | `llama-server` | real |
 
 **Latency split** (mean của 3 query, từ output của `pipeline.py`):
 
-- embed: _<ms>_
-- retrieve: _<ms>_
-- llm: _<ms>_
-- **stage chiếm nhiều nhất:** _<stage>_ (_<%>_ của total)
+- embed: 0.0 ms
+- retrieve: 0.03 ms
+- llm: 6234.0 ms
+- **stage chiếm nhiều nhất:** llm (100% của total)
 
-**Reflection** (≤ 60 chữ): bottleneck ở đâu? Có khớp với kỳ vọng của bạn không? Nếu
-phải giảm latency của pipeline này 2×, bạn sẽ tấn công vào đâu?
-
-_Answer here._
+**Reflection** (≤ 60 chữ): bottleneck nằm hoàn toàn ở llm decode, đúng như kỳ vọng vì
+retrieve chỉ so khớp từ khoá (gần như free) còn máy không có GPU offload nên sinh token
+chậm. Nếu phải giảm latency 2×, sẽ tấn công vào stage llm trước — giảm `max_tokens`
+hoặc bật GPU offload (`-ngl`) cho card MX330 sẵn có, thay vì tối ưu retrieve.
 
 ---
 
@@ -110,22 +109,26 @@ _Answer here._
 > một before/after thật (`benchmarks/01-tuning-tg128.md`). Đổi quantization,
 > `LAB_N_CTX`, hay `--parallel` rồi đo lại cũng được.
 
-**Change:** _<vd: hạ -t từ 16 xuống 8; vd: đổi sang UD-Q2_K_XL; vd: --parallel 4 → 8>_
+**Change:** hạ -t từ 16 xuống 4 (physical core count) trong `make tune`
 
 ```
-before:  <số + đơn vị>
-after:   <số + đơn vị>
-speedup: <X.Y>×
+before:  2.7 tok/s   (-t 16)
+after:   28.8 tok/s  (-t 4)
+speedup: 10.5×
 ```
 
 **Tại sao nó work** (1–2 đoạn — đây là phần grader đọc kỹ nhất):
 
-_Giải thích như đang nói với bạn ngồi cạnh. Bám vào **cơ chế**, không phải "vibes":
-memory bandwidth? vector width? cache residency? scheduling? queueing? Nếu kết quả
-**khác** với kỳ vọng từ deck — nói rõ, và giải thích vì sao. Grader thưởng điểm cho
-lập luận đúng về một kết quả bất ngờ, hơn là một con số đẹp không được giải thích._
-
-_Answer here._
+CPU máy này có 4 core vật lý, 8 luồng logic qua hyperthreading. Từ -t 1 đến -t 4,
+throughput tăng gần tuyến tính (16.9 → 23.7 → 28.8 tok/s) vì mỗi thread được một core
+vật lý riêng, không tranh nhau. Qua khỏi 4 thread, các thread thêm phải dùng chung core
+vật lý qua hyperthreading — chúng tranh nhau cùng một đơn vị tính toán, cache L1/L2 và
+băng thông bộ nhớ, nên không thêm compute thật mà chỉ thêm tranh chấp. Ở -t 8, throughput
+tụt còn 76% đỉnh. Ở -t 16 (gấp đôi số luồng logic), hệ điều hành phải oversubscribe nặng,
+context-switch liên tục giữa quá nhiều thread trên chỉ 8 lõi logic, cộng thêm việc máy
+đang chạy trong WSL2 (lịch CPU bị ảo hoá thêm một lớp qua host Windows) khiến chi phí
+scheduling càng lớn — đó là lý do throughput sập hẳn xuống 10% đỉnh thay vì chỉ giảm dần
+như một đường cong "diminishing returns" thông thường.
 
 ---
 

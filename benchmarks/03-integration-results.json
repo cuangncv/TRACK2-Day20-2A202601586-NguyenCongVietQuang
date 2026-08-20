@@ -1,0 +1,104 @@
+{
+  "backend": "keyword overlap",
+  "mean_ms": {
+    "embed": 0.0,
+    "retrieve": 0.0,
+    "llm": 6234.0,
+    "total": 6234.1
+  },
+  "results": [
+    {
+      "query": "Why is goodput more useful than raw throughput?",
+      "answer": "Based on the context provided, **Goodput** is more useful than raw throughput because it specifically accounts for **SLOs (Service Level Objects)** and **TPOT (Throughput at Saturation)**.\n\nHere is the breakdown of why this makes it superior:\n\n1.  **Accurate Measurement of Actual Load**: Raw throughput measures the total requests processed per second (TPOT). However, it ignores the specific constraints of the system, such as Service Level Objects (SLOs) or the saturation point where the system hits its limits. Goodput calculates throughput only for requests that met these targets, ensuring the metric reflects the actual service performance.\n2.  **Avoids False Optimism**: The context notes that \"Throughput at saturation ignores SLOs.\" If a system is under SLOs but has high raw throughput, raw throughput would be misleading. Goodput focuses on the requests that actually satisfied the SLOs, providing a more realistic and useful metric for monitoring and",
+      "contexts": [
+        {
+          "id": "goodput",
+          "score": 1.0
+        },
+        {
+          "id": "paged",
+          "score": 0.0
+        },
+        {
+          "id": "radix",
+          "score": 0.0
+        }
+      ],
+      "embed_backend": "keyword overlap",
+      "timings_ms": {
+        "embed": 0.0,
+        "retrieve": 0.0,
+        "llm": 8363.8,
+        "total": 8363.9
+      },
+      "server_timings": {
+        "prompt_n": 151,
+        "prompt_ms": 1164.471,
+        "predicted_n": 200,
+        "predicted_ms": 6243.93
+      }
+    },
+    {
+      "query": "What problem does PagedAttention actually solve?",
+      "answer": "PagedAttention solves the problem of **internal fragmentation and memory bandwidth bottlenecks** in GPU memory.\n\nSpecifically, it addresses two major issues:\n1.  **Internal Fragmentation**: By storing KV cache in non-contiguous pages, it removes the wasted space that would otherwise be allocated to the GPU's internal memory.\n2.  **Compute-Bound vs. Memory-Bound Splits**: It enables the engine to split prefill (compute-bound) and decode (memory-bandwidth-bound) tasks onto separate pools. This allows the engine to utilize compute resources more efficiently by avoiding the need to constantly prefetch data that is not currently being used, thereby improving overall throughput and memory bandwidth utilization.",
+      "contexts": [
+        {
+          "id": "paged",
+          "score": 1.0
+        },
+        {
+          "id": "radix",
+          "score": 0.0
+        },
+        {
+          "id": "disagg",
+          "score": 0.0
+        }
+      ],
+      "embed_backend": "keyword overlap",
+      "timings_ms": {
+        "embed": 0.0,
+        "retrieve": 0.1,
+        "llm": 5664.4,
+        "total": 5664.5
+      },
+      "server_timings": {
+        "prompt_n": 114,
+        "prompt_ms": 825.417,
+        "predicted_n": 143,
+        "predicted_ms": 4721.128
+      }
+    },
+    {
+      "query": "When does splitting prefill and decode help?",
+      "answer": "When prefill and decode are split, the system avoids computing the full token prefix for the entire batch. Specifically, this optimization is triggered when **continuous batching** is enabled.\n\nIn this scenario, requests join and leave the running batch each time the decode step occurs, rather than waiting for a complete batch to be processed. By splitting the prefill (which is compute-bound) and decode (which is memory-bound) onto separate pools, the engine can skip the expensive prefill phase entirely for tokens that are not part of the current batch, significantly improving performance.",
+      "contexts": [
+        {
+          "id": "disagg",
+          "score": 2.0
+        },
+        {
+          "id": "radix",
+          "score": 1.0
+        },
+        {
+          "id": "batching",
+          "score": 1.0
+        }
+      ],
+      "embed_backend": "keyword overlap",
+      "timings_ms": {
+        "embed": 0.0,
+        "retrieve": 0.0,
+        "llm": 4673.7,
+        "total": 4673.8
+      },
+      "server_timings": {
+        "prompt_n": 113,
+        "prompt_ms": 822.641,
+        "predicted_n": 114,
+        "predicted_ms": 3702.289
+      }
+    }
+  ]
+}
